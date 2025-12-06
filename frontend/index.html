@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Model & Dataset Manager</title>
+</head>
+
+<body>
+<h1>YOLO Model Manager</h1>
+<hr>
+
+<!-- CATEGORY CREATION -->
+<h2>Create Category</h2>
+<input type="text" id="newCategory" placeholder="Enter category name">
+<button onclick="createCategory()">Create</button>
+
+<hr>
+
+<!-- MODEL UPLOAD -->
+<h2>Upload Model (.pt)</h2>
+
+<select id="categorySelect"></select>
+<input type="text" id="versionModel" placeholder="version1">
+
+<input type="file" id="modelFile">
+<button onclick="uploadModel()">Upload Model</button>
+
+<pre id="modelResult"></pre>
+
+<hr>
+
+<!-- DATASET UPLOAD -->
+<h2>Upload Dataset (Images + Labels Folders)</h2>
+
+<select id="categorySelect2"></select>
+<input type="text" id="versionDataset" placeholder="version1">
+
+<h3>Select Images Folder</h3>
+<input type="file" id="imageFolder" webkitdirectory directory multiple>
+
+<h3>Select Labels Folder</h3>
+<input type="file" id="labelFolder" webkitdirectory directory multiple>
+
+<button onclick="uploadDataset()">Upload Dataset</button>
+
+<pre id="datasetResult"></pre>
+
+<script>
+const API = "http://127.0.0.1:8000";
+
+
+// ------------------------------------------------------
+// Load categories into dropdown
+// ------------------------------------------------------
+async function loadCategories() {
+    let res = await fetch(API + "/categories");
+    let data = await res.json();
+
+    let s1 = document.getElementById("categorySelect");
+    let s2 = document.getElementById("categorySelect2");
+
+    s1.innerHTML = "";
+    s2.innerHTML = "";
+
+    data.categories.forEach(c => {
+        let o1 = document.createElement("option");
+        o1.value = c;
+        o1.innerText = c;
+        s1.appendChild(o1);
+
+        let o2 = document.createElement("option");
+        o2.value = c;
+        o2.innerText = c;
+        s2.appendChild(o2);
+    });
+}
+
+loadCategories();
+
+
+// ------------------------------------------------------
+// Create category
+// ------------------------------------------------------
+async function createCategory() {
+    let cat = document.getElementById("newCategory").value;
+
+    let res = await fetch(API + `/create_category?category=${cat}`, {
+        method: "POST"
+    });
+
+    let data = await res.json();
+    alert(JSON.stringify(data));
+    loadCategories();
+}
+
+
+
+// ------------------------------------------------------
+// Upload Model
+// ------------------------------------------------------
+async function uploadModel() {
+    let category = document.getElementById("categorySelect").value;
+    let version = document.getElementById("versionModel").value;
+    let file = document.getElementById("modelFile").files[0];
+
+    let form = new FormData();
+    form.append("file", file);
+
+    let res = await fetch(`${API}/upload_model_v2?category=${category}&version=${version}`, {
+        method: "POST",
+        body: form
+    });
+
+    document.getElementById("modelResult").innerText =
+        JSON.stringify(await res.json(), null, 2);
+}
+
+
+
+// ------------------------------------------------------
+// Upload Dataset Folder (Images + Labels)
+// ------------------------------------------------------
+async function uploadDataset() {
+    let category = document.getElementById("categorySelect2").value;
+    let version = document.getElementById("versionDataset").value;
+
+    let images = Array.from(document.getElementById("imageFolder").files);
+    let labels = Array.from(document.getElementById("labelFolder").files);
+
+    let all = [];
+    images.forEach(f => all.push({ file: f, type: "image" }));
+    labels.forEach(f => all.push({ file: f, type: "label" }));
+
+    const BATCH = 10;
+    let results = [];
+
+    for (let i = 0; i < all.length; i += BATCH) {
+        let batch = all.slice(i, i + BATCH);
+
+        for (let item of batch) {
+            let form = new FormData();
+            form.append("file", item.file);
+
+            let res = await fetch(
+                `${API}/upload_dataset_v2?category=${category}&version=${version}&type=${item.type}`,
+                { method: "POST", body: form }
+            );
+
+            results.push(await res.json());
+        }
+
+        document.getElementById("datasetResult").innerText =
+            `Uploaded ${Math.min(i + BATCH, all.length)} / ${all.length}`;
+    }
+
+    document.getElementById("datasetResult").innerText =
+        JSON.stringify(results, null, 2);
+}
+</script>
+
+</body>
+</html>
+
+
+update frontend in this page only i have mix both
+

@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pymongo
+boto3
+python-multipart
+ultralytics
+requests
